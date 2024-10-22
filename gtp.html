@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Relés y Gráfica</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .relay-indicator {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: inline-block;
+            margin: 10px;
+            background-color: gray; /* Estado apagado por defecto */
+        }
+        .on {
+            background-color: limegreen; /* Encendido */
+        }
+        .off {
+            background-color: red; /* Apagado */
+        }
+    </style>
+</head>
+<body>
+    <h1>Control de Relés</h1>
+    <div>
+        <div class="relay-indicator" id="relay0" onclick="toggleRelay(0)"></div>
+        <div class="relay-indicator" id="relay1" onclick="toggleRelay(1)"></div>
+        <div class="relay-indicator" id="relay2" onclick="toggleRelay(2)"></div>
+        <div class="relay-indicator" id="relay3" onclick="toggleRelay(3)"></div>
+    </div>
+    <canvas id="sensorChart"></canvas>
+    
+    <script>
+        const SUPABASE_URL = "https://qqwslolsoodmnpneambc.supabase.co";
+        const SUPABASE_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxd3Nsb2xzb29kbW5wbmVhbWJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk1NDI5ODMsImV4cCI6MjA0NTExODk4M30.mpHa5qgLZ9F5HV_RUrT2wU-ge1cN_21Pl6gMn-q5hA0";
+
+        const relayStates = [false, false, false, false]; // Estado de los relés
+
+        async function toggleRelay(relay) {
+            relayStates[relay] = !relayStates[relay]; // Cambiar el estado
+            updateRelayIndicator(relay);
+            await fetch(`http://TU_IP_ESP8266/controlRelay?relay=${relay}&state=${relayStates[relay]}`, { method: 'POST' });
+        }
+
+        function updateRelayIndicator(relay) {
+            const indicator = document.getElementById(`relay${relay}`);
+            indicator.className = `relay-indicator ${relayStates[relay] ? 'on' : 'off'}`;
+        }
+
+        async function fetchData() {
+            const response = await fetch(SUPABASE_URL + 'tu_tabla?select=value', {
+                headers: {
+                    'Authorization': 'Bearer ' + SUPABASE_API_KEY,
+                    'Content-Type': 'application/json'
+                }
+            });
+            const data = await response.json();
+            return data.map(item => item.value);
+        }
+
+        async function renderChart() {
+            const values = await fetchData();
+            const ctx = document.getElementById('sensorChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: values.map((_, i) => i + 1),
+                    datasets: [{
+                        label: 'Sensor Values',
+                        data: values,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                }
+            });
+        }
+
+        setInterval(renderChart, 5000); 
+    </script>
+</body>
+</html>
