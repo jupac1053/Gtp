@@ -3,81 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Relés y Gráfica</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Control de Botón Neón</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     <style>
-        .relay-indicator {
-            width: 50px;
-            height: 50px;
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #111;
+            color: white;
+        }
+        .boton {
+            margin: 20px auto;
+            padding: 20px;
+            width: 150px;
+            height: 150px;
             border-radius: 50%;
-            display: inline-block;
-            margin: 10px;
-            background-color: gray; /* Estado apagado por defecto */
+            background-color: gray; /* Estado apagado */
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            font-size: 20px;
+            color: white;
+            transition: background-color 0.3s, box-shadow 0.3s;
         }
         .on {
-            background-color: limegreen; /* Encendido */
+            background-color: limegreen;
+            box-shadow: 0 0 20px limegreen, 0 0 40px limegreen, 0 0 60px limegreen;
         }
         .off {
-            background-color: red; /* Apagado */
+            background-color: red;
+            box-shadow: 0 0 20px red, 0 0 40px red, 0 0 60px red;
         }
     </style>
 </head>
 <body>
-    <h1>Control de Relés</h1>
-    <div>
-        <div class="relay-indicator" id="relay0" onclick="toggleRelay(0)"></div>
-        <div class="relay-indicator" id="relay1" onclick="toggleRelay(1)"></div>
-        <div class="relay-indicator" id="relay2" onclick="toggleRelay(2)"></div>
-        <div class="relay-indicator" id="relay3" onclick="toggleRelay(3)"></div>
-    </div>
-    <canvas id="sensorChart"></canvas>
-    
+    <h1>Botón Neón Encendido/Apagado</h1>
+    <div class="boton off" id="boton">OFF</div>
+
     <script>
-        const SUPABASE_URL = "https://qqwslolsoodmnpneambc.supabase.co";
-        const SUPABASE_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxd3Nsb2xzb29kbW5wbmVhbWJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk1NDI5ODMsImV4cCI6MjA0NTExODk4M30.mpHa5qgLZ9F5HV_RUrT2wU-ge1cN_21Pl6gMn-q5hA0";
+        // Conexión a Supabase
+        const SUPABASE_URL = 'https://TUSUPABASEURL.supabase.co';  // Reemplaza con tu URL
+        const SUPABASE_API_KEY = 'TUSUPABASEAPIKEY';  // Reemplaza con tu API Key
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_API_KEY);
 
-        const relayStates = [false, false, false, false]; // Estado de los relés
+        const boton = document.getElementById('boton');
 
-        async function toggleRelay(relay) {
-            relayStates[relay] = !relayStates[relay]; // Cambiar el estado
-            updateRelayIndicator(relay);
-            await fetch(`http://TU_IP_ESP8266/controlRelay?relay=${relay}&state=${relayStates[relay]}`, { method: 'POST' });
+        // Función para actualizar el estado del botón en Supabase
+        async function actualizarEstado(nuevoEstado) {
+            const { data, error } = await supabase
+                .from('boton')
+                .update({ estado: nuevoEstado })
+                .eq('id', 1); // Asegúrate de que el botón tiene el ID 1 en la tabla
+            if (error) {
+                console.error('Error al actualizar el estado:', error);
+            }
         }
 
-        function updateRelayIndicator(relay) {
-            const indicator = document.getElementById(`relay${relay}`);
-            indicator.className = `relay-indicator ${relayStates[relay] ? 'on' : 'off'}`;
+        // Función para obtener el estado actual del botón desde Supabase
+        async function obtenerEstado() {
+            const { data, error } = await supabase
+                .from('boton')
+                .select('estado')
+                .eq('id', 1)
+                .single();
+
+            if (data) {
+                actualizarBotonVisual(data.estado);
+            } else {
+                console.error('Error al obtener el estado:', error);
+            }
         }
 
-        async function fetchData() {
-            const response = await fetch(SUPABASE_URL + '/dispositivos?select=value', {
-                headers: {
-                    'Authorization': 'Bearer ' + SUPABASE_API_KEY,
-                    'Content-Type': 'application/json'
-                }
-            });
-            const data = await response.json();
-            return data.map(item => item.value);
+        // Cambiar el color del botón según su estado
+        function actualizarBotonVisual(estado) {
+            if (estado) {
+                boton.classList.remove('off');
+                boton.classList.add('on');
+                boton.textContent = 'ON';
+            } else {
+                boton.classList.remove('on');
+                boton.classList.add('off');
+                boton.textContent = 'OFF';
+            }
         }
 
-        async function renderChart() {
-            const values = await fetchData();
-            const ctx = document.getElementById('sensorChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: values.map((_, i) => i + 1),
-                    datasets: [{
-                        label: 'Sensor Values',
-                        data: values,
-                        borderColor: 'rgba(75, 192, 192, 1)',
-                        borderWidth: 1
-                    }]
-                }
-            });
-        }
+        // Al hacer clic en el botón, cambia el estado y lo actualiza en Supabase
+        boton.addEventListener('click', async () => {
+            const estadoActual = boton.classList.contains('on');
+            const nuevoEstado = !estadoActual; // Cambia de encendido a apagado y viceversa
 
-        setInterval(renderChart, 5000); 
+            // Actualiza el botón visualmente
+            actualizarBotonVisual(nuevoEstado);
+
+            // Actualiza el estado en la base de datos
+            await actualizarEstado(nuevoEstado);
+        });
+
+        // Al cargar la página, obtener el estado actual del botón
+        obtenerEstado();
     </script>
 </body>
 </html>
