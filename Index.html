@@ -50,7 +50,7 @@
         }
 
         async function fetchData() {
-            const response = await fetch(SUPABASE_URL + 'tu_tabla?select=value', {
+            const response = await fetch(SUPABASE_URL + 'dispositivos?select=value', {
                 headers: {
                     'Authorization': 'Bearer ' + SUPABASE_API_KEY,
                     'Content-Type': 'application/json'
