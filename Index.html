@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Botón Neón</title>
+    <title>Control de Botones Neón</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     <style>
         body {
@@ -18,12 +18,13 @@
             width: 150px;
             height: 150px;
             border-radius: 50%;
-            background-color: gray; /* Estado apagado */
+            background-color: gray;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
             cursor: pointer;
             font-size: 20px;
             color: white;
             transition: background-color 0.3s, box-shadow 0.3s;
+            display: inline-block;
         }
         .on {
             background-color: limegreen;
@@ -36,70 +37,78 @@
     </style>
 </head>
 <body>
-    <h1>Botón Neón Encendido/Apagado</h1>
-    <div class="boton off" id="boton">OFF</div>
+    <h1>Botones Neón Encendido/Apagado</h1>
+
+    <div class="boton off" id="boton1">Botón 1</div>
+    <div class="boton off" id="boton2">Botón 2</div>
+    <div class="boton off" id="boton3">Botón 3</div>
+    <div class="boton off" id="boton4">Botón 4</div>
 
     <script>
         // Conexión a Supabase
         const SUPABASE_URL = 'https://qqwslolsoodmnpneambc.supabase.co';  
-        const SUPABASE_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxd3Nsb2xzb29kbW5wbmVhbWJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk1NDI5ODMsImV4cCI6MjA0NTExODk4M30.mpHa5qgLZ9F5HV_RUrT2wU-ge1cN_21Pl6gMn-q5hA0';  // Reemplaza con tu API Key
+        const SUPABASE_API_KEY = 'your-api-key';
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_API_KEY);
 
-        const boton = document.getElementById('boton');
+        const botones = [1, 2, 3, 4]; // IDs de los botones
 
         // Función para actualizar el estado del botón en Supabase
-        async function actualizarEstado(nuevoEstado) {
-            const { data, error } = await supabase
-                .from('boton')
+        async function actualizarEstado(id, nuevoEstado) {
+            const { error } = await supabase
+                .from('botones')
                 .update({ estado: nuevoEstado })
-                .eq('id', 1); // Asegúrate de que el botón tiene el ID 1 en la tabla
+                .eq('id', id);
             if (error) {
-                console.error('Error al actualizar el estado:', error);
+                console.error(`Error al actualizar el estado del botón ${id}:`, error);
             }
         }
 
-        // Función para obtener el estado actual del botón desde Supabase
-        async function obtenerEstado() {
+        // Función para obtener el estado actual de todos los botones desde Supabase
+        async function obtenerEstados() {
             const { data, error } = await supabase
-                .from('boton')
-                .select('estado')
-                .eq('id', 1)
-                .single();
+                .from('botones')
+                .select('id, estado');
 
-            if (data) {
-                actualizarBotonVisual(data.estado);
-            } else {
-                console.error('Error al obtener el estado:', error);
+            if (error) {
+                console.error('Error al obtener los estados:', error);
+                return;
             }
+
+            // Actualiza visualmente cada botón según su estado en la base de datos
+            data.forEach(boton => {
+                actualizarBotonVisual(boton.id, boton.estado);
+            });
         }
 
-        // Cambiar el color del botón según su estado
-        function actualizarBotonVisual(estado) {
+        // Cambia el color del botón según su estado
+        function actualizarBotonVisual(id, estado) {
+            const boton = document.getElementById(`boton${id}`);
             if (estado) {
                 boton.classList.remove('off');
                 boton.classList.add('on');
-                boton.textContent = 'ON';
+                boton.textContent = `Botón ${id} - ON`;
             } else {
                 boton.classList.remove('on');
                 boton.classList.add('off');
-                boton.textContent = 'OFF';
+                boton.textContent = `Botón ${id} - OFF`;
             }
         }
 
-        // Al hacer clic en el botón, cambia el estado y lo actualiza en Supabase
-        boton.addEventListener('click', async () => {
-            const estadoActual = boton.classList.contains('on');
-            const nuevoEstado = !estadoActual; // Cambia de encendido a apagado y viceversa
+        // Asigna eventos de clic a cada botón
+        botones.forEach(id => {
+            const boton = document.getElementById(`boton${id}`);
+            boton.addEventListener('click', async () => {
+                const estadoActual = boton.classList.contains('on');
+                const nuevoEstado = !estadoActual;
 
-            // Actualiza el botón visualmente
-            actualizarBotonVisual(nuevoEstado);
-
-            // Actualiza el estado en la base de datos
-            await actualizarEstado(nuevoEstado);
+                // Actualiza visualmente y en la base de datos
+                actualizarBotonVisual(id, nuevoEstado);
+                await actualizarEstado(id, nuevoEstado);
+            });
         });
 
-        // Al cargar la página, obtener el estado actual del botón
-        obtenerEstado();
+        // Al cargar la página, obtener el estado actual de todos los botones
+        obtenerEstados();
     </script>
 </body>
 </html>
